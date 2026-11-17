@@ -103,7 +103,7 @@ text(s, Inches(0.8), Inches(4.0), Inches(7.6), Inches(1.0),
      "Exploring the world's leading cloud platform: services, a hands-on demo, features and a real-world use case",
      size=18, color=RGBColor(0xC9, 0xD1, 0xD9))
 text(s, Inches(0.8), Inches(5.5), Inches(7.6), Inches(1.2),
-     [[("Presented by: ", {"color": ORANGE, "bold": True}), ("<Your Name>  ·  <Reg. No.>", {})],
+     [[("Presented by: ", {"color": ORANGE, "bold": True}), ("Yanamala Uhas Reddy  ·  RA2311003010363", {})],
       [("Repository: ", {"color": ORANGE, "bold": True}), (REPO, {})]], size=15, color=WHITE)
 for i, (big, small) in enumerate([("2006", "Launched"), ("200+", "Services"), ("~1/3", "Cloud market share")]):
     y = Inches(1.3 + i * 1.75)
