@@ -392,6 +392,11 @@ text(s, Inches(0.8), Inches(4.9), Inches(11.5), Inches(1.0), "Thank you! Questio
 text(s, Inches(0.8), Inches(6.0), Inches(11.5), Inches(0.5),
      [[("Code, docs & this deck: ", {"color": ORANGE, "bold": True}), (REPO, {})]], size=16, color=WHITE)
 
+cp = prs.core_properties
+cp.author = cp.last_modified_by = "Yanamala Uhas Reddy"
+cp.title = "Tool Explorer: Amazon Web Services (AWS)"
+cp.subject = "21CSE362T Cloud Computing"
+
 out = Path(__file__).with_name("AWS_Tool_Explorer.pptx")
 prs.save(out)
 print("saved", out, len(prs.slides), "slides")
