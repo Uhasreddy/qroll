@@ -14,7 +14,7 @@ INK = RGBColor(0x16, 0x19, 0x1F)
 MUTED = RGBColor(0x5F, 0x6B, 0x7A)
 PAPER = RGBColor(0xF4, 0xF6, 0xF8)
 LIGHT = RGBColor(0xFF, 0xF4, 0xE0)
-REPO = "github.com/yanamalareddy-star/aws-tool-explorer"
+REPO = "github.com/Uhasreddy/aws-tool-explorer"
 
 prs = Presentation()
 prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
