@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QRoll – Live dashboard</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="top"><div class="wrap">
+    <span class="logo">QR</span><span class="brand">QRoll<small>organizer dashboard</small></span>
+  </div></header>
+
+  <main class="wrap">
+    <section class="card" id="login" hidden>
+      <h1>Organizer PIN</h1>
+      <p class="lede">Enter the PIN you set when creating this event.</p>
+      <form id="pinform">
+        <input id="pin" type="password" inputmode="numeric" placeholder="6–10 digits" required>
+        <button class="full" type="submit">Open dashboard</button>
+        <div class="msg" id="pinmsg"></div>
+      </form>
+    </section>
+
+    <div id="dash" hidden>
+      <div class="row" style="margin-bottom:18px">
+        <div>
+          <h1 id="title">…</h1>
+          <div class="row"><span id="venue" class="lede" style="margin:0"></span><span id="state" class="pill">OPEN</span></div>
+        </div>
+        <span class="space"></span>
+        <button class="secondary" id="csv">Export CSV</button>
+        <button class="danger" id="close">Close check-in</button>
+      </div>
+
+      <div class="grid two">
+        <section class="card qrbox">
+          <h2 style="margin:0">Scan to check in</h2>
+          <div id="qr"></div>
+          <div class="timer"><div id="bar"></div></div>
+          <p class="hint">QR refreshes in <b id="secs">–</b> s · old codes expire within 2 minutes</p>
+          <p class="hint mono" id="link" style="word-break:break-all"></p>
+        </section>
+
+        <section class="card">
+          <div class="stats">
+            <div class="stat"><b id="count">0</b><span>checked in</span></div>
+            <div class="stat"><b id="left">–</b><span>check-in closes</span></div>
+            <div class="stat"><b id="last">–</b><span>last check-in</span></div>
+          </div>
+          <table>
+            <thead><tr><th>#</th><th>Name</th><th>Reg. no.</th><th>Time</th></tr></thead>
+            <tbody id="rows"><tr><td colspan="4" class="empty">Waiting for the first check-in…</td></tr></tbody>
+          </table>
+          <div class="msg" id="msg"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <footer>QRoll · data in Amazon DynamoDB · API on AWS Lambda</footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const id = param("e");
+    let pin = loadPin(id);
+    let ev = null, seen = new Set(), rowsCache = [], refreshAt = 0, qrTimer, listTimer;
+    const $ = (x) => document.getElementById(x);
+
+    function checkinUrl(token) {
+      const base = location.href.replace(/event\.html.*$/, "checkin.html");
+      return `${base}?e=${encodeURIComponent(id)}&t=${encodeURIComponent(token)}`;
+    }
+
+    function renderEvent(e) {
+      ev = e;
+      $("title").textContent = e.title;
+      $("venue").textContent = `${e.venue} · event ${e.id}`;
+      $("state").textContent = e.open ? "OPEN" : "CLOSED";
+      $("state").className = e.open ? "pill" : "pill closed";
+      $("count").textContent = e.count;
+      $("close").disabled = !e.open;
+      document.title = `QRoll – ${e.title}`;
+    }
+
+    async function loadQr() {
+      const { status, data } = await api(`/events/${id}/qr`, { pin });
+      if (status === 401) return showLogin("Wrong PIN.");
+      if (status !== 200) return showMsg($("msg"), data.error || "Could not load QR.");
+      renderEvent(data.event);
+      if (!data.event.open) {
+        $("qr").innerHTML = '<p class="empty">Check-in is closed.</p>';
+        $("link").textContent = ""; $("secs").textContent = "–"; $("bar").style.width = "0";
+        return;
+      }
+      const url = checkinUrl(data.token);
+      const q = qrcode(0, "M"); q.addData(url); q.make();
+      $("qr").innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+      $("link").textContent = url;
+      refreshAt = Date.now() + data.refreshInSeconds * 1000;
+      clearTimeout(qrTimer);
+      qrTimer = setTimeout(loadQr, data.refreshInSeconds * 1000 + 300);
+    }
+
+    async function loadList() {
+      const { status, data } = await api(`/events/${id}/attendees`, { pin });
+      if (status === 401) return showLogin("Wrong PIN.");
+      if (status !== 200) return;
+      renderEvent(data.event);
+      rowsCache = data.attendees;
+      const tb = $("rows");
+      if (!rowsCache.length) {
+        tb.innerHTML = '<tr><td colspan="4" class="empty">Waiting for the first check-in…</td></tr>';
+      } else {
+        tb.innerHTML = rowsCache.map((r, i) =>
+          `<tr class="${seen.size && !seen.has(r.regNo) ? "new" : ""}"><td class="num">${i + 1}</td><td>${esc(r.name)}</td><td class="mono">${esc(r.regNo)}</td><td class="num">${fmtTime(r.checkedInAt)}</td></tr>`
+        ).join("");
+        $("last").textContent = fmtTime(rowsCache[rowsCache.length - 1].checkedInAt).slice(0, 5);
+      }
+      rowsCache.forEach(r => seen.add(r.regNo));
+      if (!seen.size) seen.add("");
+    }
+
+    function tick() {
+      const s = Math.max(0, Math.ceil((refreshAt - Date.now()) / 1000));
+      if (ev && ev.open) {
+        $("secs").textContent = s;
+        $("bar").style.width = `${(s / 30) * 100}%`;
+        const mins = Math.max(0, Math.round((ev.closesAt * 1000 - Date.now()) / 60000));
+        $("left").textContent = `${mins} min`;
+      } else if (ev) {
+        $("left").textContent = "closed";
+      }
+    }
+
+    function showLogin(text) {
+      clearTimeout(qrTimer); clearInterval(listTimer);
+      $("dash").hidden = true; $("login").hidden = false;
+      if (text) showMsg($("pinmsg"), text);
+    }
+
+    async function start() {
+      $("login").hidden = true; $("dash").hidden = false;
+      await loadQr();
+      await loadList();
+      clearInterval(listTimer);
+      listTimer = setInterval(loadList, 4000);
+    }
+
+    $("pinform").addEventListener("submit", (e) => {
+      e.preventDefault();
+      pin = $("pin").value.trim(); savePin(id, pin); hideMsg($("pinmsg")); start();
+    });
+
+    $("close").addEventListener("click", async () => {
+      if (!confirm("Close check-in now? Students will no longer be able to check in.")) return;
+      const { status, data } = await api(`/events/${id}/close`, { method: "POST", pin });
+      if (status === 200) { renderEvent(data.event); loadQr(); }
+      else showMsg($("msg"), data.error || "Could not close.");
+    });
+
+    $("csv").addEventListener("click", () => {
+      const lines = [["#", "Name", "RegNo", "CheckedInAt"]].concat(
+        rowsCache.map((r, i) => [i + 1, r.name, r.regNo, new Date(r.checkedInAt * 1000).toISOString()])
+      ).map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
+      const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `qroll-${id}.csv`;
+      a.click();
+    });
+
+    setInterval(tick, 1000);
+    if (!id) document.body.innerHTML = "<p class='wrap'>Missing event id.</p>";
+    else if (pin) start(); else showLogin();
+  </script>
+</body>
+</html>

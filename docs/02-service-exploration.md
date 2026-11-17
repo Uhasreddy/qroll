@@ -1,86 +1,56 @@
-# 2. Service Exploration: IaaS, PaaS and SaaS on AWS — *2 Marks*
+# 2. Service Exploration: Mapping QRoll to IaaS / PaaS / SaaS — *2 marks*
 
-Unit II describes the **cloud computing stack**. Each layer hides more of the infrastructure from the user:
+The table classifies each service by the job it actually does in this project, not by the label a brochure gives it.
 
-```
-        ┌──────────────────────────────┐
- SaaS   │  Ready-to-use software        │  e.g. Amazon WorkMail, Chime, QuickSight
-        ├──────────────────────────────┤
- PaaS   │  Platform: runtime, DB, OS     │  e.g. Elastic Beanstalk, RDS, Lambda
-        ├──────────────────────────────┤
- IaaS   │  Virtual servers, storage, net │  e.g. EC2, S3, EBS, VPC
-        └──────────────────────────────┘
-```
-
-| | You manage | AWS manages |
-|---|---|---|
-| **IaaS** | OS, runtime, app, data | Hardware, virtualization, network |
-| **PaaS** | App code and data | OS, patching, runtime, scaling |
-| **SaaS** | Only your usage/data | Everything |
-
----
-
-## A. Infrastructure as a Service (IaaS)
-
-### Amazon EC2 (Elastic Compute Cloud)
-- Resizable **virtual machines** (instances) running on the AWS **Nitro hypervisor** (Unit IV: *Hypervisors*).
-- Instance families: *General purpose* (t3, m7), *Compute optimized* (c7), *Memory optimized* (r7), *GPU / accelerated* (p5, g5).
-- Started from an **AMI (Amazon Machine Image)**, a template containing the OS and software (Unit IV: *Virtual Machine Imaging*).
-- **Example:** a college runs its exam portal on two `t3.medium` instances during results week and stops them afterwards.
-
-### Amazon S3 (Simple Storage Service)
-- **Object storage**: files (objects) are stored in **buckets**, with unlimited capacity and 11-nines durability.
-- Storage classes: Standard, Intelligent-Tiering, Standard-IA, Glacier (archive).
-- **Example:** storing lecture videos, backups, or hosting a static website (our demo).
-
-### Amazon EBS and Amazon VPC
-- **EBS:** block storage disks attached to EC2 instances.
-- **VPC (Virtual Private Cloud):** your own isolated virtual network with subnets, route tables and gateways.
-
----
-
-## B. Platform as a Service (PaaS)
-
-### AWS Elastic Beanstalk
-- Upload code (Java, Python, Node.js, PHP, .NET, Go). Beanstalk then **provisions EC2, load balancer, Auto Scaling and monitoring automatically**.
-- **Example:** a student uploads a Flask app `.zip` and gets a live URL without configuring servers.
-
-### Amazon RDS (Relational Database Service)
-- Managed MySQL, PostgreSQL, MariaDB, Oracle, SQL Server and Amazon Aurora. AWS handles backups, patching and replication.
-- **Example:** the student-records database of a university ERP.
-
-### AWS Lambda (serverless / FaaS)
-- Run code **without managing servers**. Code runs only when triggered, and you pay per request and per millisecond.
-- **Example:** when a photo is uploaded to S3, a Lambda function automatically creates a thumbnail.
-
----
-
-## C. Software as a Service (SaaS)
-
-| Service | What it is | Example |
-|---|---|---|
-| **Amazon WorkMail** | Managed business e-mail and calendar | Company e-mail without running a mail server |
-| **Amazon Chime** | Online meetings, video, chat | Team meetings and webinars |
-| **Amazon QuickSight** | Business-intelligence dashboards | Sales dashboards for managers |
-| **Amazon Connect** | Cloud contact centre | Customer-support call centre |
-| **AWS Marketplace** | Thousands of 3rd-party SaaS products | Buying a firewall or CRM by subscription |
-
----
-
-## D. Other important service categories
-| Category | Services |
-|---|---|
-| Networking & CDN | VPC, Route 53 (DNS), CloudFront (CDN), Elastic Load Balancing |
-| Databases | DynamoDB (NoSQL), ElastiCache, Redshift (data warehouse) |
-| Security & Identity | IAM, KMS, Cognito, Shield, WAF |
-| Monitoring | CloudWatch, CloudTrail |
-| AI / ML | SageMaker, Rekognition, Polly, Bedrock |
-
-## E. Comparison with Azure and GCP (Unit V)
-| Need | AWS | Microsoft Azure | Google Cloud |
+| Model | In QRoll? | Service | Why it belongs here |
 |---|---|---|---|
-| Virtual machines | EC2 | Azure Virtual Machines | Compute Engine |
-| Serverless | Lambda | Azure Functions | Cloud Functions |
-| Object storage | S3 | Blob Storage | Cloud Storage |
-| PaaS app hosting | Elastic Beanstalk | App Service | App Engine |
-| Launched | 2006 | 2010 | 2011 |
+| **IaaS** | ❌ **Not used** | (EC2 would be IaaS) | No virtual machine anywhere. Choosing *not* to rent servers is the main design decision. With EC2 we would patch Linux, keep the VM running 24×7 and pay for idle time. |
+| **PaaS / FaaS** | ✅ | **AWS Lambda** | Function-as-a-Service, the serverless form of PaaS. We upload `lambda_function.py`; AWS provides the runtime, OS, scaling and availability. |
+| **PaaS (managed API)** | ✅ | **Amazon API Gateway** | We declare routes, CORS and throttling; AWS runs the HTTPS infrastructure. |
+| **DBaaS (managed PaaS)** | ✅ | **Amazon DynamoDB** | Database-as-a-Service. No DB server, no capacity planning (on-demand mode), automatic replication across 3 Availability Zones. |
+| **Storage service** | ✅ | **Amazon S3** | Object storage that also serves our static website files over HTTP. |
+| **SaaS** | ✅ (tools) | **AWS Management Console**, **CloudWatch dashboards**, **GitHub** | Finished software we only *use*: to inspect resources, read metrics and host the source code. |
+
+> **Honest note:** QRoll itself behaves like a small **SaaS** product. An organizer opens a URL and uses it with nothing to install. Under the hood it is built on PaaS/FaaS, not IaaS.
+
+## Who manages what (shared responsibility, Unit III)
+
+| Layer | EC2 version (IaaS) | QRoll (serverless) |
+|---|---|---|
+| Physical servers, network | AWS | AWS |
+| Operating system patches | **Us** | AWS |
+| Runtime (Python) | **Us** | AWS |
+| Scaling / load balancing | **Us** (Auto Scaling + ELB) | AWS (automatic) |
+| Database server | **Us** (install MySQL) | AWS (DynamoDB) |
+| Application code | Us | Us |
+| Data + access rules (IAM, PIN) | Us | Us |
+
+## Services explored with examples from this project
+
+### AWS Lambda
+- **Trigger:** API Gateway invokes the function with an *event* containing `routeKey`, path parameters, headers and body.
+- **Config used:** Python 3.12, 256 MB memory, 10 s timeout, 3.6 KB code package, env var `TABLE_NAME`.
+- **Cold start vs warm:** the first call took about 500 ms (cold start). Later calls took about 5–40 ms. Both are visible in the CloudWatch *Duration* graph.
+
+### Amazon API Gateway (HTTP API)
+- 6 routes, e.g. `POST /events/{id}/checkin` → Lambda proxy integration (payload v2.0).
+- **CORS** allows only the S3 website's origin, so other websites cannot call the API from a browser.
+- **Throttling:** 10 requests/s steady, burst 20. This protects the free-tier budget and slows brute-force attempts.
+
+### Amazon DynamoDB
+- **Single-table design:** `PK = EVENT#<id>`, `SK = META` for the event, `SK = ATT#<REGNO>` for each attendee. One `Query` returns the whole attendance list.
+- **Conditional write:** `attribute_not_exists(SK)` makes a register number unique per event.
+- **Transaction:** `TransactWriteItems` inserts the attendee *and* increments the counter only if the event is still open. Both happen or neither does.
+- **TTL:** attribute `expiresAt`; DynamoDB deletes the data 7 days after the event closes at no cost.
+
+### Amazon S3 static website hosting
+- Bucket `qroll-ra2311003010363` with website hosting on and a public-read policy for the site files only.
+- `deploy.sh` writes `config.js` with the API URL, so the same frontend works in any account.
+
+## Comparison: the same app on other clouds (Unit V)
+| QRoll piece | AWS | Microsoft Azure | Google Cloud |
+|---|---|---|---|
+| Functions | Lambda | Azure Functions | Cloud Run functions |
+| API front door | API Gateway | API Management | API Gateway |
+| NoSQL DB | DynamoDB | Cosmos DB | Firestore |
+| Static site | S3 website | Blob Storage static website | Cloud Storage bucket |

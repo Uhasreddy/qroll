@@ -1,135 +1,102 @@
-# 3. Practical Demonstration — *2 Marks*
+# 3. Practical Demonstration — *2 marks*
 
-I show **two basic operations** on AWS using the website in [`demo/website/`](../demo/website/):
+QRoll was deployed to a real AWS account and tested on **17 Nov 2026** in **Asia Pacific (Sydney) `ap-southeast-2`**. The new account's free plan allows one Region.
 
-| Demo | Service | Model | What it proves |
+## 3.1 Architecture
+
+```
+ Organizer browser ──┐                         ┌──────────────── AWS (ap-southeast-2) ────────────────┐
+                     │  GET pages (HTTP)       │                                                      │
+ Student phone ──────┼────────────────────────►│  Amazon S3 website  (index / event / checkin .html)  │
+   (scans QR)        │                         │                                                      │
+                     │  JSON over HTTPS        │  Amazon API Gateway  ──invoke──►  AWS Lambda          │
+                     └────────────────────────►│  (CORS, throttling)               qroll-api (Python)  │
+                                               │                                        │             │
+                                               │                     IAM role ─────────┤             │
+                                               │                     (this table only)  ▼             │
+                                               │                              Amazon DynamoDB         │
+                                               │                              qroll-attendance        │
+                                               │  Amazon CloudWatch ◄── logs + metrics ──┘             │
+                                               └──────────────────────────────────────────────────────┘
+```
+
+### API
+| Route | Who | What Lambda does |
+|---|---|---|
+| `POST /events` | Organizer | Validates input, hashes PIN (PBKDF2 + salt), creates a random 256-bit QR secret, writes `EVENT#id / META` |
+| `GET /events/{id}` | Anyone | Returns title, venue, open/closed, count. Never returns the secret or PIN hash |
+| `GET /events/{id}/qr` | Organizer (PIN) | Returns the current token = first 8 base32 chars of `HMAC-SHA256(secret, "id:⌊now/30⌋")` |
+| `POST /events/{id}/checkin` | Student | Checks token (current + 3 previous windows); runs a DynamoDB transaction (unique attendee + event still open + count++) |
+| `GET /events/{id}/attendees` | Organizer (PIN) | `Query` on `PK = EVENT#id AND begins_with(SK, "ATT#")` |
+| `POST /events/{id}/close` | Organizer (PIN) | Sets `closed = true`; later check-ins get HTTP 410 |
+
+## 3.2 Deployment steps
+Everything is created by [`infra/deploy.sh`](../infra/deploy.sh) with the AWS CLI. The same steps can be clicked through in the Console.
+
+| # | Step | AWS CLI call (simplified) | Console equivalent |
 |---|---|---|---|
-| **A** | Amazon S3 static website hosting | IaaS (storage) | Create a bucket, upload files, set a public policy, get a live URL |
-| **B** | Amazon EC2 web server | IaaS (compute) | Launch a VM, configure a firewall (security group), auto-install Apache, open it in a browser |
+| 1 | Create the table | `aws dynamodb create-table --billing-mode PAY_PER_REQUEST` (PK, SK) + `update-time-to-live` | DynamoDB → Create table |
+| 2 | Create the Lambda role | `aws iam create-role` + `put-role-policy` ([policy](../infra/lambda-permissions-policy.json)) | IAM → Roles → Create role |
+| 3 | Deploy the function | `zip` + `aws lambda create-function --runtime python3.12` | Lambda → Create function → upload .zip |
+| 4 | Create the HTTP API | `aws apigatewayv2 create-api` + 6× `create-route` + `create-stage` (throttling) + `lambda add-permission` | API Gateway → Create HTTP API → add routes |
+| 5 | Host the website | `aws s3 mb` + `s3 website` + bucket policy + `s3 sync` (writes `config.js` with the API URL) | S3 → Create bucket → Static website hosting |
 
-> 💡 Both demos fit in the **AWS Free Tier**. Run [`cleanup.sh`](../demo/scripts/cleanup.sh) afterwards so you are not charged.
-
----
-
-## Prerequisites
-1. Create an AWS account at <https://aws.amazon.com/free>.
-2. **Do not use the root user.** In **IAM → Users → Create user**, create a user with the `AdministratorAccess` policy (or `AmazonS3FullAccess` + `AmazonEC2FullAccess`). Unit III covers identity and access management.
-3. *(For the CLI path)* Install AWS CLI v2 and run:
-   ```bash
-   aws configure
-   # AWS Access Key ID:     <from IAM user → Security credentials>
-   # AWS Secret Access Key: <...>
-   # Default region name:   ap-south-1      (Mumbai)
-   # Default output format: json
-   ```
-
----
-
-## Demo A: Host a static website on Amazon S3
-
-### Console steps
-1. Open **S3** → **Create bucket**.
-2. **Bucket name:** a globally unique name, e.g. `tool-explorer-yourname-2026`. **Region:** `ap-south-1`.
-3. Under **Block Public Access settings**, untick *Block all public access* and acknowledge the warning.
-4. Click **Create bucket**.
-5. Open the bucket → **Upload** → add `index.html`, `error.html`, `style.css` → **Upload**.
-6. **Properties** tab → **Static website hosting** → **Edit** → *Enable* → Index document `index.html`, Error document `error.html` → **Save**.
-7. **Permissions** tab → **Bucket policy** → **Edit** → paste [`bucket-policy.json`](../demo/scripts/bucket-policy.json) (replace `BUCKET_NAME`) → **Save**.
-8. Back in **Properties → Static website hosting**, copy the **Bucket website endpoint**, e.g.
-   `http://tool-explorer-yourname-2026.s3-website.ap-south-1.amazonaws.com`, and open it. ✅ The site is live.
-9. Test the error page by opening `/does-not-exist`. It shows `error.html`.
-
-### CLI equivalent
-```bash
-cd demo/scripts
-./deploy-s3-website.sh tool-explorer-yourname-2026
+Output of the real run:
 ```
-The script runs `aws s3 mb`, `put-public-access-block`, `s3 website`, `put-bucket-policy` and `s3 sync`, then prints the URL.
-
----
-
-## Demo B: Launch a web server on Amazon EC2
-
-### Console steps
-1. Open **EC2** → **Launch instance**.
-2. **Name:** `tool-explorer-web`.
-3. **AMI:** *Amazon Linux 2023* (Free tier eligible). The AMI is the VM image (Unit IV).
-4. **Instance type:** `t2.micro` / `t3.micro` (Free tier).
-5. **Key pair:** *Create new key pair* → `tool-explorer-key` → RSA, `.pem` → download it.
-6. **Network settings → Create security group:**
-   - Allow **SSH (22)** from *My IP*
-   - Allow **HTTP (80)** from *Anywhere (0.0.0.0/0)*
-
-   A security group is a **virtual firewall** for the instance.
-7. **Advanced details → User data:** paste the contents of [`ec2-user-data.sh`](../demo/scripts/ec2-user-data.sh). It installs Apache and writes the web page on first boot.
-8. Click **Launch instance**. Wait until **Instance state = Running** and **Status checks = 2/2 passed**.
-9. Copy the **Public IPv4 address** and open `http://<public-ip>` in a browser. ✅ The page shows the instance ID and Availability Zone, read live from the EC2 metadata service.
-10. *(Optional)* Connect with **EC2 Instance Connect** or SSH:
-    ```bash
-    chmod 400 tool-explorer-key.pem
-    ssh -i tool-explorer-key.pem ec2-user@<public-ip>
-    sudo systemctl status httpd
-    ```
-11. **Monitoring** tab: show CPU utilisation graphs from **CloudWatch**.
-
-### CLI equivalent
-```bash
-cd demo/scripts
-./launch-ec2-webserver.sh
+✅ QRoll is live
+   Website : http://qroll-ra2311003010363.s3-website-ap-southeast-2.amazonaws.com
+   API     : https://m2tkf1r146.execute-api.ap-southeast-2.amazonaws.com
 ```
-The script looks up the latest Amazon Linux 2023 AMI, creates a key pair and a security group (ports 22 and 80), runs the instance with the user-data script, waits for it, and prints the URL.
 
----
+## 3.3 Automated end-to-end test (live API)
+[`infra/smoke-test.sh`](../infra/smoke-test.sh) output:
+```
+  PASS  create event (HTTP 201)
+  PASS  wrong PIN rejected (HTTP 401)
+  PASS  organizer gets QR token (HTTP 200)
+  PASS  check-in (HTTP 201)
+  PASS  duplicate blocked (HTTP 409)
+  PASS  forged token rejected (HTTP 403)
+  PASS  attendee list (HTTP 200)
+  PASS  close event (HTTP 200)
+  PASS  late check-in rejected (HTTP 410)
+  PASS  unknown event (HTTP 404)
 
-## Clean-up (important)
-| Resource | How to delete |
+10 passed, 0 failed
+```
+
+## 3.4 Live demo script (what to show in class)
+1. **Create the event**: open the website, enter title, venue, minutes and PIN, then click *Create event*.
+2. **Project the QR**: the dashboard shows the QR and a 30-second countdown bar; the QR changes when it hits zero.
+3. **Check in from a phone**: scan, type name and register number, tap *Check in*. A green ✓ appears.
+4. **Watch it appear live**: the dashboard row flashes and the counter increments (polling every 4 s).
+5. **Try to cheat**:
+   - Submit the same register number again → *"already checked in"* (409).
+   - Open an old QR link after 2 minutes → *"QR code has expired"* (403).
+6. **Show the cloud side**: DynamoDB *Explore items* (the `META` and `ATT#…` rows), the Lambda function with its API Gateway trigger, and CloudWatch invocations, duration and errors.
+7. **Close + export**: *Close check-in* (later attempts get 410), then *Export CSV*.
+
+## 3.5 Evidence from the live run
+
+| 1 · Create event | 2 · Live rotating QR |
 |---|---|
-| EC2 instance | EC2 → Instances → select → **Instance state → Terminate** |
-| Security group / key pair | EC2 → Security Groups / Key Pairs → Delete |
-| S3 bucket | S3 → bucket → **Empty**, then **Delete** |
+| ![create](../screenshots/01-create-event.jpg) | ![qr](../screenshots/02-live-qr-dashboard.jpg) |
 
-Or run: `./cleanup.sh tool-explorer-yourname-2026`
+| 3 · Student form (phone) | 4 · Checked in | 5 · Duplicate blocked | 6 · Expired QR rejected |
+|---|---|---|---|
+| ![form](../screenshots/03-student-checkin-form.jpg) | ![ok](../screenshots/04-student-checked-in.jpg) | ![dup](../screenshots/05-duplicate-blocked.jpg) | ![expired](../screenshots/07-expired-qr-rejected.jpg) |
 
----
+**Dashboard after 6 check-ins** (the QR token has already rotated):
+![dashboard](../screenshots/06-live-dashboard-attendees.jpg)
 
-## What I learned from the demo
-- **On-demand self-service:** a server was running within about 1 minute, with no hardware purchase.
-- **Virtualization:** the EC2 instance is a VM created from an AMI on the Nitro hypervisor.
-- **Security:** least-privilege IAM user, security-group firewall rules, and S3 Block Public Access defaults.
-- **Measured service:** usage is visible in CloudWatch and in the Billing dashboard.
-- **IaaS responsibility:** on EC2 *I* installed and configured Apache. On S3 AWS ran the web server for me.
-
-## Actual run (17 Nov 2026)
-
-Both demos were run on a real AWS account with the scripts in this repo.
-
-> **Region note:** a new account on the AWS free plan can only use one Region (here **Asia Pacific (Sydney) `ap-southeast-2`**), so the demo ran there instead of Mumbai. The scripts take the Region as an argument: `./deploy-s3-website.sh <bucket> ap-southeast-2`.
-
-| Item | Result |
+| DynamoDB items (single-table design) | Lambda function with API Gateway trigger |
 |---|---|
-| S3 bucket | `tool-explorer-ra2311003010363` (3 objects) |
-| S3 website URL | <http://tool-explorer-ra2311003010363.s3-website.ap-southeast-2.amazonaws.com> (HTTP 200; `/does-not-exist` → custom 404 page) |
-| EC2 instance | `i-095263cde7ad74d9f`, `t3.micro`, Amazon Linux 2023, AZ `ap-southeast-2a` |
-| Security group | `tool-explorer-sg`: TCP 22 from my IP only, TCP 80 from `0.0.0.0/0` |
-| EC2 website | `http://3.107.189.138` served the Apache page about 1 min after launch |
-| Clean-up | EC2 instance **terminated**, security group and key pair **deleted**. The S3 site was kept live for the evaluation. |
+| ![ddb](../screenshots/08-dynamodb-items.jpg) | ![lambda](../screenshots/09-lambda-function.jpg) |
 
-### Screenshots
+**CloudWatch**: 80 invocations during testing, **0 errors, 100% success**. Duration ranged from 4.7 ms (warm) to 496 ms (cold start).
+![cloudwatch](../screenshots/10-cloudwatch-metrics.jpg)
 
-**Demo A: Amazon S3**
+> The sample classmates in the screenshots are demo data entered for testing.
 
-| Bucket objects | Static website hosting enabled |
-|---|---|
-| ![S3 objects](../screenshots/01-s3-bucket-objects.jpg) | ![S3 endpoint](../screenshots/02-s3-website-endpoint.jpg) |
-| **Live website** | **Custom error page (404)** |
-| ![S3 live site](../screenshots/03-s3-site-live.jpg) | ![S3 error page](../screenshots/04-s3-error-page.jpg) |
-
-**Demo B: Amazon EC2**
-
-| Instance running | Security group (inbound rules) |
-|---|---|
-| ![EC2 running](../screenshots/05-ec2-instance-running.jpg) | ![Security group](../screenshots/06-ec2-security-group.jpg) |
-
-**Live page served by Apache on the EC2 instance** (instance ID and AZ read from instance metadata):
-
-![EC2 live site](../screenshots/07-ec2-site-live.jpg)
+## 3.6 Clean-up
+`./cleanup.sh qroll-ra2311003010363 ap-southeast-2` deletes the API, function, log group, IAM role, table and bucket.

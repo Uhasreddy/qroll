@@ -1,13 +1,16 @@
-# Screenshots: practical demonstration (17 Nov 2026, Region ap-southeast-2)
+# Screenshots: live run on 17 Nov 2026 (ap-southeast-2)
 
 | File | Shows |
 |---|---|
-| `01-s3-bucket-objects.jpg` | S3 bucket `tool-explorer-ra2311003010363` with the 3 uploaded files |
-| `02-s3-website-endpoint.jpg` | Properties → Static website hosting: Enabled, with the website endpoint |
-| `03-s3-site-live.jpg` | The website loaded from the S3 endpoint |
-| `04-s3-error-page.jpg` | Custom `error.html` returned for a missing page (HTTP 404) |
-| `05-ec2-instance-running.jpg` | EC2 instance `tool-explorer-web` (t3.micro) in Running state with public IP |
-| `06-ec2-security-group.jpg` | Security group inbound rules: SSH (22) and HTTP (80) |
-| `07-ec2-site-live.jpg` | Apache page served by the EC2 instance (instance ID, type, AZ) |
+| `01-create-event.jpg` | Organizer creates the event (title, venue, duration, PIN) |
+| `02-live-qr-dashboard.jpg` | Dashboard with the rotating QR and countdown, before any check-ins |
+| `03-student-checkin-form.jpg` | Student's phone after scanning the QR |
+| `04-student-checked-in.jpg` | Successful check-in confirmation |
+| `05-duplicate-blocked.jpg` | Same register number again → blocked (HTTP 409) |
+| `06-live-dashboard-attendees.jpg` | Dashboard with 6 live check-ins; QR token already rotated |
+| `07-expired-qr-rejected.jpg` | Old QR link used after 2 minutes → rejected (HTTP 403) |
+| `08-dynamodb-items.jpg` | DynamoDB table items: one `META` row + one `ATT#<regno>` row per student |
+| `09-lambda-function.jpg` | Lambda function `qroll-api` with its API Gateway trigger |
+| `10-cloudwatch-metrics.jpg` | CloudWatch: 80 invocations, 0 errors, 100% success |
 
-Full write-up: [docs/03-practical-demonstration.md](../docs/03-practical-demonstration.md)
+Sample classmates in the screenshots are demo data entered for testing.

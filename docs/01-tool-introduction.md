@@ -1,35 +1,25 @@
-# 1. Tool Introduction: Amazon Web Services (AWS) — *1 Mark*
+# 1. Tool Introduction — *1 mark*
 
-## What is AWS?
-**Amazon Web Services (AWS)** is the public cloud platform from Amazon.com. It launched in **2006** with Amazon S3 (storage) and Amazon EC2 (compute). It now offers **200+ fully featured services** for computing, storage, networking, databases, analytics, machine learning, IoT and security, all delivered over the Internet **on demand** with **pay-as-you-go** pricing.
+## The platform: Amazon Web Services (AWS)
+AWS is Amazon's public cloud, launched in 2006. It offers 200+ on-demand services billed pay-as-you-go and is the largest cloud provider by market share (Unit V). This case study uses the **serverless** part of AWS: services where AWS runs, patches and scales the servers and the customer supplies only code and data.
 
-In simple words: instead of buying and maintaining physical servers, an organisation *rents* servers, storage and software from AWS, uses them for as long as it needs, and pays only for what it uses. It works like an electricity grid, which is the analogy used in Unit I.
+| Service | What it is | Role in QRoll |
+|---|---|---|
+| **AWS Lambda** | Runs code on demand. No server to manage; billed per request and per millisecond | The entire backend: one Python 3.12 function, `qroll-api`, handling 6 routes |
+| **Amazon API Gateway (HTTP API)** | Managed HTTPS front door for APIs | Public HTTPS endpoint with CORS, routing and throttling (10 req/s, burst 20) |
+| **Amazon DynamoDB** | Fully managed NoSQL key-value database | Stores events and check-ins. Conditional writes, transactions and TTL |
+| **Amazon S3** | Object storage with static website hosting | Hosts the HTML/CSS/JS pages |
+| **AWS IAM** | Identity and access management | Lambda's role can touch **only** this table and its own logs |
+| **Amazon CloudWatch** | Logs and metrics | Invocation count, duration and error rate for the demo |
 
-## Purpose of AWS
-| Purpose | Explanation |
-|---------|-------------|
-| Replace on-premise data centres | Rent virtual servers (EC2) and storage (S3) instead of buying hardware. |
-| Turn CapEx into OpEx | No upfront capital expenditure; you pay monthly operating cost (Unit I: *Capital Expenditures, TCO*). |
-| Scale on demand | Add or remove capacity in minutes (rapid elasticity). |
-| Go global | Deploy close to users in many Regions around the world. |
-| Speed up innovation | Ready-made managed services (databases, AI, analytics) let teams build faster. |
+## Why serverless matters in cloud computing
+- It goes further than IaaS. On EC2 you still patch the OS and pay for idle hours. With Lambda you pay **only when a request arrives**.
+- It shows the cloud characteristics from Unit I directly: **on-demand self-service**, **rapid elasticity** (Lambda scales per request), **measured service** (per-request billing in CloudWatch), and **resource pooling** (thousands of customers share the same Lambda fleet).
+- It is how modern apps are built: Netflix, Coca-Cola and iRobot run serverless workloads on Lambda.
 
-## Global infrastructure
-- **Regions:** separate geographic areas (e.g., *Asia Pacific (Mumbai) ap-south-1*, *US East (N. Virginia) us-east-1*).
-- **Availability Zones (AZs):** one or more isolated data centres inside each Region, linked by low-latency networking. They provide fault tolerance.
-- **Edge Locations:** 400+ points of presence used by CloudFront (CDN) to cache content near users.
-- Per the Unit V material, AWS runs **200+ data centres** with a strong presence in Northern Virginia, Oregon and Frankfurt.
+## The case: why attendance?
+Taking attendance by passing a sheet around wastes 5–10 minutes of a lecture. It is easy to fake ("proxy"), and someone still has to type it into a spreadsheet. A plain Google Form doesn't fix proxies, because the link can be forwarded.
 
-## Importance of AWS in cloud computing
-1. **Market leader:** AWS holds the largest share of the cloud market (about one-third). Together AWS, Azure and GCP make up most of the market (Unit V).
-2. **Pioneer:** AWS made IaaS mainstream and set the model other providers follow.
-3. **Shows every NIST characteristic:** on-demand self-service, broad network access, resource pooling, rapid elasticity and measured service.
-4. **Covers every service model:** IaaS, PaaS and SaaS (see [Activity 2](02-service-exploration.md)).
-5. **Trusted by industry:** Netflix, Airbnb, Coursera, Expedia, Formula 1, Coca-Cola, Lyft and the US FDA all run on AWS (Unit V).
-6. **Reliability:** SLAs such as **99.99%** availability for EC2 Regions and **99.999999999% (11 nines) durability** for S3.
+**Case question:** *Can a fully serverless app take attendance faster than paper, stop forwarded-link proxies and duplicates, and cost almost nothing to run?*
 
-## Ways to access AWS
-- **AWS Management Console:** web-based GUI.
-- **AWS CLI:** command-line tool (`aws ec2 run-instances ...`).
-- **SDKs:** Python (boto3), Java, JavaScript and others.
-- **Infrastructure as Code:** AWS CloudFormation, AWS CDK.
+QRoll answers this with a live deployment. See [03-practical-demonstration.md](03-practical-demonstration.md).

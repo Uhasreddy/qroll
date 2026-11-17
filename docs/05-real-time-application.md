@@ -1,58 +1,35 @@
-# 5. Real-Time Application: Netflix on AWS — *1 Mark*
+# 5. Real-Time Application — *1 mark*
 
-## The company
-**Netflix** streams films and series to **more than 200 million members in 190+ countries**. Unit V lists Netflix as a notable AWS user.
+## 5.1 Real-time behaviour in QRoll
+QRoll is a **live system**, not a simulation. Every action in the demo reads or writes the real DynamoDB table in AWS:
 
-## The problem
-In **2008** a major database corruption in Netflix's own data centre stopped DVD shipments for **3 days**. Netflix saw that a single on-premise data centre could not:
-- scale to sudden global demand (new series releases, weekends),
-- give high availability across countries, and
-- grow quickly enough when it moved from DVDs to streaming.
+- A student taps **Check in**. API Gateway → Lambda → DynamoDB transaction completes in about **30–60 ms** on a warm function.
+- The organizer dashboard polls every **4 s**, so a new name appears on the projector within a few seconds and the row flashes.
+- The QR on the projector **rotates every 30 s**, driven by server time inside Lambda.
+- CloudWatch shows each request as it happens (80 invocations, 0 errors during testing).
 
-## The solution: move everything to AWS (2008–2016)
-Netflix finished moving all of its streaming infrastructure to AWS in **2016** and closed its last data centre.
+## 5.2 Industry use case: large-event check-in
+**Scenario:** a university tech fest with **3,000 attendees** across 40 workshop sessions on one day.
 
-```
- User (TV / Mobile)
-        │
-        ▼
- Amazon Route 53 (DNS) ──► Elastic Load Balancing
-                                  │
-                                  ▼
-                 EC2 Auto Scaling groups (thousands of micro-services)
-                     │                 │                 │
-                     ▼                 ▼                 ▼
-              DynamoDB / Cassandra   Amazon S3        Kinesis / EMR
-              (user data, history)  (video masters)  (analytics, recommendations)
-                                       │
-                                       ▼
-                 Encoding on EC2 → Open Connect CDN → User's screen
-```
-
-| Netflix need | AWS service | Cloud concept (syllabus) |
+| Challenge | Traditional approach | QRoll on AWS |
 |---|---|---|
-| Thousands of micro-services | **EC2** + Auto Scaling | IaaS, elasticity (Units II & IV) |
-| Store video master files | **Amazon S3** | Object storage, durability |
-| Spread traffic | **Elastic Load Balancing** | Load balancing (Unit IV) |
-| Survive failures | **Multiple Regions and AZs** | High availability, SLA (Unit I) |
-| Personalised recommendations | **EMR, Kinesis, S3 data lake** | Big data analytics |
-| Secure access | **IAM** | Cloud security (Unit III) |
+| 300 people arrive in 10 minutes for the keynote | Queues at 4 desks with paper lists | Everyone scans the projected QR at once; Lambda scales to parallel requests automatically |
+| Peak load for 1 hour, idle the rest of the year | Rent or buy servers sized for the peak | Pay per request; ₹0 when idle |
+| Proxy entries for certificates | Hard to detect | Rotating QR + unique register number per session |
+| Session-wise reports for certificates | Manual data entry | CSV export per session |
+| Data privacy after the fest | Paper sheets left lying around | TTL automatically deletes data after 7 days |
 
-## Results
-- Streaming hours grew **1,000×** after the migration began.
-- Netflix runs **chaos engineering** ("Chaos Monkey"), which randomly stops EC2 instances to prove the system survives failures.
-- Netflix adds capacity in minutes for big releases instead of buying servers months ahead.
-- Its engineers focus on content and personalisation rather than hardware.
+The same serverless pattern (static frontend + API Gateway + Lambda + DynamoDB) is used in industry for:
+- **Event ticketing and badge scanning** at conferences.
+- **Contact-tracing check-ins** at venues during COVID-19 (QR + serverless backends were widely used).
+- **Restaurant QR ordering** and **parking/visitor logs**: short, bursty traffic, ideal for pay-per-request.
 
-## Other industry examples on AWS
-| Industry | Organisation | Use |
-|---|---|---|
-| Travel | Airbnb, Expedia | Booking platforms, data analytics |
-| Education | Coursera | Course video delivery to millions of learners |
-| Sports | Formula 1 | Real-time race-car data analysis (F1 Insights) |
-| Finance | Coinbase, Intuit | Secure, compliant transaction processing |
-| Government / Health | US FDA | Processing drug-safety reports |
-| India | Swiggy, Zomato, Ola (popular reported users) | Real-time order and ride matching at scale |
-
-## Link to my demo
-My **Demo B** (an EC2 web server behind a security group) is a tiny version of one Netflix micro-service node. Adding an **Auto Scaling group + Load Balancer** in front of many such instances is how Netflix-scale systems are built.
+## 5.3 Scaling path (how this grows into a production product)
+| Need | Add this AWS service |
+|---|---|
+| HTTPS + custom domain (`attendance.college.edu`) | Amazon CloudFront + AWS Certificate Manager + Route 53 |
+| Student login instead of typing a register number | Amazon Cognito (SSO with the college identity provider) |
+| Push updates instead of polling | API Gateway WebSocket API or AWS AppSync subscriptions |
+| Daily attendance reports emailed to faculty | Amazon EventBridge schedule → Lambda → Amazon SES |
+| Analytics (who misses Monday classes?) | DynamoDB export to S3 → Amazon Athena / QuickSight |
+| Infrastructure as Code | AWS SAM or CDK instead of shell scripts |

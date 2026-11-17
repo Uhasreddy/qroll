@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QRoll – Create an event</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="top"><div class="wrap">
+    <span class="logo">QR</span><span class="brand">QRoll<small>serverless attendance</small></span>
+  </div></header>
+
+  <main class="wrap">
+    <div class="grid two">
+      <section class="card">
+        <h1>Start an attendance session</h1>
+        <p class="lede">Create an event, put the live QR code on the projector, and students check in from their phones.</p>
+        <form id="create">
+          <label for="title">Event / class title</label>
+          <input id="title" required minlength="3" maxlength="80" placeholder="Cloud Computing – Unit 5 lecture">
+          <label for="venue">Venue</label>
+          <input id="venue" required minlength="2" maxlength="80" placeholder="TP-401">
+          <label for="minutes">Check-in open for (minutes)</label>
+          <input id="minutes" type="number" min="5" max="480" value="15" required>
+          <label for="pin">Organizer PIN</label>
+          <input id="pin" type="password" inputmode="numeric" pattern="\d{6,10}" required placeholder="6–10 digits">
+          <p class="hint">You need this PIN to see the QR code and attendee list. It is stored only as a salted hash.</p>
+          <button class="full" id="go" type="submit">Create event</button>
+          <div class="msg" id="msg"></div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2 style="margin-top:0">How it works</h2>
+        <ol>
+          <li><b>Create</b>: this page calls <span class="mono">POST /events</span> on API Gateway, which runs a Lambda function that writes the event to DynamoDB.</li>
+          <li><b>Project the QR</b>: the dashboard shows a QR code whose token <b>changes every 30 seconds</b>, so a photo forwarded on WhatsApp stops working.</li>
+          <li><b>Scan &amp; check in</b>: students scan with their phone camera, enter name + register number, and DynamoDB blocks duplicates with a conditional write.</li>
+          <li><b>Watch live</b>: the dashboard refreshes the list every few seconds; export to CSV when done.</li>
+        </ol>
+        <p class="hint">Frontend: Amazon S3 static website · API: Amazon API Gateway (HTTP API) · Logic: AWS Lambda (Python) · Data: Amazon DynamoDB (on-demand, TTL cleanup)</p>
+      </section>
+    </div>
+  </main>
+  <footer>QRoll · 21CSE362T Cloud Computing case study</footer>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const form = document.getElementById("create");
+    const msg = document.getElementById("msg");
+    const btn = document.getElementById("go");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      hideMsg(msg);
+      btn.disabled = true; btn.textContent = "Creating…";
+      const pin = document.getElementById("pin").value.trim();
+      const { status, data } = await api("/events", {
+        method: "POST",
+        body: {
+          title: document.getElementById("title").value,
+          venue: document.getElementById("venue").value,
+          minutes: Number(document.getElementById("minutes").value),
+          pin,
+        },
+      });
+      if (status === 201) {
+        savePin(data.id, pin);
+        location.href = `event.html?e=${encodeURIComponent(data.id)}`;
+      } else {
+        showMsg(msg, data.error || `Request failed (${status}).`);
+        btn.disabled = false; btn.textContent = "Create event";
+      }
+    });
+  </script>
+</body>
+</html>

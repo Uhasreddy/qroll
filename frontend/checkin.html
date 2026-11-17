@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QRoll – Check in</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="top"><div class="wrap">
+    <span class="logo">QR</span><span class="brand">QRoll<small>check-in</small></span>
+  </div></header>
+
+  <main class="wrap" style="max-width:520px">
+    <section class="card" id="formcard">
+      <p class="hint" style="margin:0">You are checking in to</p>
+      <h1 id="title">Loading…</h1>
+      <p class="lede" id="venue"></p>
+      <form id="f">
+        <label for="name">Full name</label>
+        <input id="name" required minlength="2" maxlength="60" autocomplete="name">
+        <label for="reg">Register number</label>
+        <input id="reg" required pattern="[A-Za-z0-9]{4,20}" class="mono" placeholder="RA23110030100XX" autocapitalize="characters">
+        <button class="full" id="go" type="submit">Check in</button>
+        <div class="msg" id="msg"></div>
+      </form>
+    </section>
+
+    <section class="card ticket" id="done" hidden>
+      <div class="tick">✓</div>
+      <h1>You're checked in</h1>
+      <p id="who" class="lede"></p>
+      <p class="hint">You can close this page.</p>
+    </section>
+  </main>
+  <footer>QRoll · serverless attendance on AWS</footer>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const id = param("e"), token = param("t");
+    const $ = (x) => document.getElementById(x);
+
+    (async () => {
+      if (!id || !token) { $("title").textContent = "Invalid link"; $("f").hidden = true; return; }
+      const { status, data } = await api(`/events/${id}`);
+      if (status !== 200) { $("title").textContent = "Event not found"; $("f").hidden = true; return; }
+      $("title").textContent = data.title;
+      $("venue").textContent = data.venue;
+      if (!data.open) { showMsg($("msg"), "Check-in for this event is closed."); $("go").disabled = true; }
+    })();
+
+    $("f").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      hideMsg($("msg"));
+      $("go").disabled = true; $("go").textContent = "Checking in…";
+      const { status, data } = await api(`/events/${id}/checkin`, {
+        method: "POST",
+        body: { name: $("name").value, regNo: $("reg").value, token },
+      });
+      if (status === 201) {
+        $("formcard").hidden = true; $("done").hidden = false;
+        $("who").innerHTML = `<b>${esc(data.name)}</b> · <span class="mono">${esc(data.regNo)}</span><br>${esc(data.event)} · ${fmtTime(data.checkedInAt)}`;
+      } else {
+        showMsg($("msg"), data.error || `Check-in failed (${status}).`, status === 409 ? "warn" : "err");
+        $("go").disabled = false; $("go").textContent = "Check in";
+      }
+    });
+  </script>
+</body>
+</html>
