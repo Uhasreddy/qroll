@@ -228,7 +228,7 @@ for r, row in enumerate(rows):
 
 # 9. Demo A
 s = base("Demo A: Static Website on Amazon S3", "3 · Practical Demonstration")
-steps = ["Create bucket (unique name, region ap-south-1)", "Untick Block all public access",
+steps = ["Create bucket (unique name, region ap-southeast-2)", "Untick Block all public access",
          "Upload index.html, error.html, style.css", "Properties → Static website hosting → Enable",
          "Permissions → Bucket policy (public s3:GetObject)", "Open the bucket website endpoint ✅"]
 for i, st in enumerate(steps):
@@ -240,16 +240,16 @@ for i, st in enumerate(steps):
 rect(s, Inches(7.3), Inches(1.75), Inches(5.4), Inches(4.75), NAVY)
 text(s, Inches(7.55), Inches(1.9), Inches(5.0), Inches(4.5),
      [[("# CLI equivalent", {"color": ORANGE})],
-      "aws s3 mb s3://tool-explorer-demo",
+      "aws s3 mb s3://tool-explorer-ra2311003010363",
       "aws s3api put-public-access-block ...",
-      "aws s3 website s3://tool-explorer-demo \\",
+      "aws s3 website s3://tool-explorer-ra2311003010363 \\",
       "   --index-document index.html \\",
       "   --error-document error.html",
       "aws s3api put-bucket-policy ...",
-      "aws s3 sync ../website s3://tool-explorer-demo",
+      "aws s3 sync ../website s3://tool-explorer-ra2311003010363",
       [("", {})],
-      [("→ http://tool-explorer-demo.s3-website", {"color": ORANGE})],
-      [("   .ap-south-1.amazonaws.com", {"color": ORANGE})]],
+      [("→ http://tool-explorer-ra2311003010363.s3-website", {"color": ORANGE})],
+      [("   .ap-southeast-2.amazonaws.com", {"color": ORANGE})]],
      size=13, color=WHITE, font="Consolas")
 
 # 10. Demo B
@@ -272,6 +272,19 @@ text(s, Inches(7.55), Inches(1.88), Inches(5.0), Inches(2.4),
 card(s, Inches(7.3), Inches(4.55), Inches(5.4), Inches(1.95), "Concepts shown", bullets([
     "Virtualization (VM from an AMI)", "Security group as a firewall (Unit III)", "Monitoring in CloudWatch · Terminate after the demo",
 ]), size=13)
+
+# 10b. Real results
+SHOTS = Path(__file__).resolve().parents[2] / "screenshots"
+s = base("Demo Results: Live on AWS", "3 · Practical Demonstration (actual run, ap-southeast-2)")
+shots = [("01-s3-bucket-objects.jpg", "S3 bucket with uploaded files"), ("03-s3-site-live.jpg", "Website live from S3 endpoint"),
+         ("05-ec2-instance-running.jpg", "EC2 t3.micro instance running"), ("07-ec2-site-live.jpg", "Apache page served by EC2")]
+for i, (f, cap) in enumerate(shots):
+    col, row = i % 2, i // 2
+    x, y = Inches(0.6 + col * 6.15), Inches(1.55 + row * 2.75)
+    pic = s.shapes.add_picture(str(SHOTS / f), x, y, height=Inches(2.25))
+    if pic.width > Inches(5.95):
+        pic.width, pic.height = Inches(5.95), int(pic.height * Inches(5.95) / pic.width)
+    text(s, x, y + Inches(2.28), Inches(5.95), Inches(0.35), cap, size=13, bold=True, color=NAVY)
 
 # 11. Features
 s = base("Key Features of AWS", "4 · Feature Identification")

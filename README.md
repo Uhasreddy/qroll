@@ -61,6 +61,14 @@ aws-tool-explorer/
 - **Demo:** (A) host a static website on **S3**, and (B) launch an **EC2** Linux VM that installs Apache through a *user-data* script and serves the same site. Both use the AWS Management Console *and* the AWS CLI.
 - **Real-world use case:** **Netflix** streams to 200M+ members on AWS (EC2 Auto Scaling, S3, CloudFront, DynamoDB).
 
+## ✅ Demo results (run on a real AWS account)
+
+- **Live S3 website:** <http://tool-explorer-ra2311003010363.s3-website.ap-southeast-2.amazonaws.com>
+- **EC2 web server:** `t3.micro` instance served the Apache page at its public IP. It was terminated after the demo to avoid charges.
+- Screenshots of every step are in [`screenshots/`](screenshots/), and the results table is in [docs/03-practical-demonstration.md](docs/03-practical-demonstration.md#actual-run-17-nov-2026).
+
+![EC2 live page](screenshots/07-ec2-site-live.jpg)
+
 ## ▶️ Run the demo yourself
 
 Prerequisites: an AWS account (Free Tier is enough), the [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), and `aws configure` done with an IAM user's access key.

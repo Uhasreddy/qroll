@@ -99,6 +99,37 @@ Or run: `./cleanup.sh tool-explorer-yourname-2026`
 - **Measured service:** usage is visible in CloudWatch and in the Billing dashboard.
 - **IaaS responsibility:** on EC2 *I* installed and configured Apache. On S3 AWS ran the web server for me.
 
-## Screenshots
-Put console screenshots in [`/screenshots`](../screenshots/) with these names:
-`01-s3-bucket.png`, `02-s3-website-endpoint.png`, `03-s3-site-live.png`, `04-ec2-launch.png`, `05-ec2-security-group.png`, `06-ec2-running.png`, `07-ec2-site-live.png`.
+## Actual run (17 Nov 2026)
+
+Both demos were run on a real AWS account with the scripts in this repo.
+
+> **Region note:** a new account on the AWS free plan can only use one Region (here **Asia Pacific (Sydney) `ap-southeast-2`**), so the demo ran there instead of Mumbai. The scripts take the Region as an argument: `./deploy-s3-website.sh <bucket> ap-southeast-2`.
+
+| Item | Result |
+|---|---|
+| S3 bucket | `tool-explorer-ra2311003010363` (3 objects) |
+| S3 website URL | <http://tool-explorer-ra2311003010363.s3-website.ap-southeast-2.amazonaws.com> (HTTP 200; `/does-not-exist` → custom 404 page) |
+| EC2 instance | `i-095263cde7ad74d9f`, `t3.micro`, Amazon Linux 2023, AZ `ap-southeast-2a` |
+| Security group | `tool-explorer-sg`: TCP 22 from my IP only, TCP 80 from `0.0.0.0/0` |
+| EC2 website | `http://3.107.189.138` served the Apache page about 1 min after launch |
+| Clean-up | EC2 instance **terminated**, security group and key pair **deleted**. The S3 site was kept live for the evaluation. |
+
+### Screenshots
+
+**Demo A: Amazon S3**
+
+| Bucket objects | Static website hosting enabled |
+|---|---|
+| ![S3 objects](../screenshots/01-s3-bucket-objects.jpg) | ![S3 endpoint](../screenshots/02-s3-website-endpoint.jpg) |
+| **Live website** | **Custom error page (404)** |
+| ![S3 live site](../screenshots/03-s3-site-live.jpg) | ![S3 error page](../screenshots/04-s3-error-page.jpg) |
+
+**Demo B: Amazon EC2**
+
+| Instance running | Security group (inbound rules) |
+|---|---|
+| ![EC2 running](../screenshots/05-ec2-instance-running.jpg) | ![Security group](../screenshots/06-ec2-security-group.jpg) |
+
+**Live page served by Apache on the EC2 instance** (instance ID and AZ read from instance metadata):
+
+![EC2 live site](../screenshots/07-ec2-site-live.jpg)

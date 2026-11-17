@@ -21,7 +21,7 @@ echo "==> Deleting security group and key pair"
 SG_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=tool-explorer-sg \
   --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)
 [ "$SG_ID" != "None" ] && [ -n "$SG_ID" ] && aws ec2 delete-security-group --group-id "$SG_ID"
-aws ec2 delete-key-pair --key-name tool-explorer-key
+aws ec2 delete-key-pair --key-name tool-explorer-key >/dev/null
 rm -f "$HERE/tool-explorer-key.pem"
 
 if [ -n "$BUCKET" ]; then
