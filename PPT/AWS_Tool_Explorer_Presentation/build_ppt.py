@@ -115,7 +115,7 @@ s = base("Agenda", "What this presentation covers")
 agenda = [("1", "Tool Introduction", "1 mark"), ("2", "Service Exploration: IaaS · PaaS · SaaS", "2 marks"),
           ("3", "Practical Demonstration: S3 website + EC2 server", "2 marks"),
           ("4", "Feature Identification: features, benefits, applications", "2 marks"),
-          ("5", "Real-Time Application: Netflix on AWS", "1 mark"), ("6", "Viva Quick Facts", "2 marks")]
+          ("5", "Real-Time Application: Netflix on AWS", "1 mark")]
 for i, (n, t, m) in enumerate(agenda):
     col, row = i % 2, i // 2
     x, y = Inches(0.6 + col * 6.2), Inches(1.9 + row * 1.6)
@@ -359,23 +359,6 @@ for r, row in enumerate(rows):
         run.font.bold = r == 0 or c == 0
         run.font.color.rgb = WHITE if r == 0 else (ORANGE if c == 0 else INK)
         cell.vertical_anchor = MSO_ANCHOR.MIDDLE
-
-# 15. Viva quick facts
-s = base("Viva: Quick Facts", "6 · Viva")
-qa = [("EC2 vs Lambda?", "VM you manage vs serverless function billed per request"),
-      ("S3 vs EBS?", "Object storage over HTTP vs block disk for one EC2"),
-      ("What is an AMI?", "Template (OS + software) used to launch EC2"),
-      ("Shared responsibility?", "AWS: security OF the cloud · You: security IN it"),
-      ("Security group?", "Stateful virtual firewall for an instance"),
-      ("User data?", "Script that runs on first boot (installed Apache)"),
-      ("Stop vs Terminate?", "Stop keeps the disk; Terminate deletes it"),
-      ("Avoid charges?", "Terminate EC2, delete bucket, set a Budget alert")]
-for i, (q, a) in enumerate(qa):
-    col, row = i % 2, i // 2
-    x, y = Inches(0.6 + col * 6.15), Inches(1.65 + row * 1.27)
-    rect(s, x, y, Inches(5.95), Inches(1.12), WHITE)
-    text(s, x + Inches(0.2), y + Inches(0.08), Inches(5.6), Inches(1.0),
-         [[("Q. " + q, {"bold": True, "color": NAVY})], [(a, {"color": INK})]], size=15)
 
 # 16. Conclusion
 s = prs.slides.add_slide(BLANK)

@@ -26,7 +26,7 @@
 7. **Focus on business:** AWS handles undifferentiated heavy lifting such as hardware, patching and backups.
 8. **Free Tier:** students can learn for free (750 hours/month of t2/t3.micro for 12 months, 5 GB S3).
 
-## C. Limitations (good to mention in viva)
+## C. Limitations
 - Costs can grow without monitoring (set **Budgets** and alerts).
 - Vendor lock-in with proprietary services.
 - The large number of services makes it hard to learn at first.

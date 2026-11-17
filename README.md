@@ -18,8 +18,7 @@ aws-tool-explorer/
 │   ├── 02-service-exploration.md     ← Activity 2 (2 marks)
 │   ├── 03-practical-demonstration.md ← Activity 3 (2 marks)
 │   ├── 04-feature-identification.md  ← Activity 4 (2 marks)
-│   ├── 05-real-time-application.md   ← Activity 5 (1 mark)
-│   └── 06-viva-questions.md          ← Activity 6 (2 marks)
+│   └── 05-real-time-application.md   ← Activity 5 (1 mark)
 ├── demo/
 │   ├── website/                      ← the site deployed in the demo
 │   │   ├── index.html
@@ -49,7 +48,6 @@ aws-tool-explorer/
 | 3 | Practical Demonstration | 2 | [docs/03-practical-demonstration.md](docs/03-practical-demonstration.md) + [demo/](demo/) |
 | 4 | Feature Identification | 2 | [docs/04-feature-identification.md](docs/04-feature-identification.md) |
 | 5 | Real-Time Application | 1 | [docs/05-real-time-application.md](docs/05-real-time-application.md) |
-| 6 | Viva | 2 | [docs/06-viva-questions.md](docs/06-viva-questions.md) |
 | — | Presentation | — | [PPT/AWS_Tool_Explorer_Presentation/](PPT/AWS_Tool_Explorer_Presentation/) |
 
 ---
